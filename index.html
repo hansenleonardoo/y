@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kalkulator Keseimbangan Gaya 2D (Visualisasi)</title>
+  <style>
+    body{font-family:Inter, sans-serif;background:#f3f7ff;margin:0;padding:20px}
+    .container{max-width:1100px;margin:auto}
+    h1{margin-top:0;color:#0b4fa3}
+    .card{background:white;padding:18px;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,0.08);margin-bottom:18px}
+    label{font-size:13px;color:#555}
+    input{width:100%;padding:8px;border-radius:8px;border:1px solid #d5def0;margin-top:4px}
+    button{padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .primary{background:#0b76ff;color:white}
+    .ghost{background:transparent;border:1px solid #0b76ff;color:#0b76ff}
+    .grid{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:10px}
+    .result-box{background:#eef4ff;padding:10px;border-radius:8px;margin:6px 0}
+    svg{width:100%;height:420px;background:white;border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Kalkulator Keseimbangan Gaya 2D + Visualisasi</h1>
+
+    <div class="card">
+      <h3>Input Gaya</h3>
+      <div id="forceList"></div>
+      <button class="primary" id="addForce">+ Tambah Gaya</button>
+      <button class="ghost" id="reset">Reset</button>
+      <br><br>
+      <button class="primary" id="compute">Hitung</button>
+    </div>
+
+    <div class="card">
+      <h3>Hasil Perhitungan</h3>
+      <div class="result-box">ΣFx: <span id="fx">0</span></div>
+      <div class="result-box">ΣFy: <span id="fy">0</span></div>
+      <div class="result-box">ΣM: <span id="moment">0</span></div>
+      <div class="result-box">Resultan: <span id="resultant">0</span></div>
+      <div class="result-box">Status: <span id="status">TIDAK SEIMBANG</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Visualisasi Gaya</h3>
+      <svg id="canvas"></svg>
+    </div>
+  </div>
+
+<script>
+let forces = [];
+const list = document.getElementById("forceList");
+
+function renderInputs(){
+  list.innerHTML = "";
+  forces.forEach((f,i)=>{
+    const row=document.createElement("div"); row.className="grid";
+    row.innerHTML = `
+      <div>
+        <label>Magnitudo (N)</label>
+        <input type="number" value="${f.mag}" data-i="${i}" data-f="mag">
+      </div>
+      <div>
+        <label>Sudut (°)</label>
+        <input type="number" value="${f.angle}" data-i="${i}" data-f="angle">
+      </div>
+      <div>
+        <label>Posisi (x,y)</label>
+        <input type="text" value="${f.x},${f.y}" data-i="${i}" data-f="pos">
+      </div>
+      <button class="ghost" onclick="removeForce(${i})">Hapus</button>
+    `;
+    list.appendChild(row);
+  });
+
+  document.querySelectorAll("input").forEach(inp=>{
+    inp.onchange = (e)=>{
+      const i = e.target.dataset.i;
+      const field = e.target.dataset.f;
+      if(field==="pos"){
+        const [x,y] = e.target.value.split(',').map(Number);
+        forces[i].x=x; forces[i].y=y;
+      } else forces[i][field]=Number(e.target.value);
+    }
+  });
+}
+
+function removeForce(i){ forces.splice(i,1); renderInputs(); draw(); }
+
+document.getElementById("addForce").onclick = ()=>{
+  forces.push({mag:10, angle:0, x:50, y:50});
+  renderInputs();
+};
+
+document.getElementById("reset").onclick = ()=>{
+  forces=[]; renderInputs(); draw();
+};
+
+function compute(){
+  let Fx=0, Fy=0, M=0;
+
+  forces.forEach(f=>{
+    let rad=f.angle*Math.PI/180;
+    let fx=f.mag*Math.cos(rad);
+    let fy=f.mag*Math.sin(rad);
+    Fx+=fx; Fy+=fy;
+    M += f.x*fy - f.y*fx;
+  });
+
+  const R = Math.hypot(Fx,Fy);
+
+  document.getElementById("fx").textContent = Fx.toFixed(3);
+  document.getElementById("fy").textContent = Fy.toFixed(3);
+  document.getElementById("moment").textContent = M.toFixed(3);
+  document.getElementById("resultant").textContent = R.toFixed(3);
+
+  const balanced = Math.abs(Fx)<0.01 && Math.abs(Fy)<0.01 && Math.abs(M)<0.01;
+  document.getElementById("status").textContent = balanced?"SEIMBANG":"TIDAK SEIMBANG";
+
+  draw();
+}
+
+document.getElementById("compute").onclick = compute;
+
+function draw(){
+  const svg=document.getElementById("canvas");
+  svg.innerHTML="";
+  const w=600, h=420;
+  svg.setAttribute("viewBox",`0 0 ${w} ${h}`);
+
+  // axes
+  const ax = document.createElementNS("http://www.w3.org/2000/svg","line");
+  ax.setAttribute("x1",0); ax.setAttribute("y1",h/2);
+  ax.setAttribute("x2",w); ax.setAttribute("y2",h/2);
+  ax.setAttribute("stroke","#bcd1ff"); ax.setAttribute("stroke-width","2");
+  svg.appendChild(ax);
+
+  const ay = document.createElementNS("http://www.w3.org/2000/svg","line");
+  ay.setAttribute("x1",w/2); ay.setAttribute("y1",0);
+  ay.setAttribute("x2",w/2); ay.setAttribute("y2",h);
+  ay.setAttribute("stroke","#bcd1ff"); ay.setAttribute("stroke-width","2");
+  svg.appendChild(ay);
+
+  // draw forces
+  forces.forEach((f,i)=>{
+    const px = w/2 + f.x;
+    const py = h/2 - f.y;
+    const rad=f.angle*Math.PI/180;
+    const len = Math.min(100,Math.max(30,f.mag*2));
+
+    const ex = px + len*Math.cos(rad);
+    const ey = py - len*Math.sin(rad);
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("x1",px); line.setAttribute("y1",py);
+    line.setAttribute("x2",ex); line.setAttribute("y2",ey);
+    line.setAttribute("stroke","#0b76ff"); line.setAttribute("stroke-width","3");
+    svg.appendChild(line);
+
+    const text = document.createElementNS("http://www.w3.org/2000/svg","text");
+    text.setAttribute("x",ex+5); text.setAttribute("y",ey-5);
+    text.setAttribute("font-size","12"); text.textContent = `F${i+1} (${f.mag}N)`;
+    svg.appendChild(text);
+
+    const point = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    point.setAttribute("cx",px); point.setAttribute("cy",py);
+    point.setAttribute("r",4); point.setAttribute("fill","#000");
+    svg.appendChild(point);
+  });
+}
+
+renderInputs(); draw();
+</script>
+</body>
+</html>
