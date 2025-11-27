@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Simulasi Mekanika Interaktif Full</title>
+<style>
+body { font-family: Arial; margin: 20px; }
+h1,h2 { color:#2c3e50; }
+.container { display:flex; flex-wrap:wrap; gap:20px; }
+.section { border:1px solid #ccc; padding:15px; border-radius:10px; width:45%; }
+canvas { border:1px solid #333; background:#f9f9f9; margin-top:10px; }
+.lang-toggle { margin-bottom:10px; }
+label { display:block; margin-top:10px; }
+input[type=number] { width:80px; }
+button { margin-top:10px; padding:5px 10px; }
+</style>
+</head>
+<body>
+
+<h1>Simulasi Mekanika Interaktif Full / 全互動力學模擬</h1>
+<div class="lang-toggle">
+<button onclick="setLanguage('id')">Bahasa Indonesia</button>
+<button onclick="setLanguage('zh')">中文 (台灣)</button>
+</div>
+
+<div class="container">
+
+<div class="section">
+<h2 id="theory-title">Teori FBD & Balok</h2>
+<p id="theory-content">Klik pada benda untuk menambahkan gaya. Drag untuk ubah arah/magnitude. Klik kanan untuk hapus. Klik balok untuk menambah/menggeser beban titik. Diagram shear & moment update otomatis.</p>
+</div>
+
+<div class="section">
+<h2 id="practice-title">FBD & Balok Interaktif</h2>
+<canvas id="fbdCanvas" width="400" height="300"></canvas>
+<p id="result"></p>
+
+<h3>Diagram Balok Interaktif</h3>
+<label>Panjang balok (m): <input type="number" id="beamLength" value="5"></label>
+<canvas id="beamCanvas" width="400" height="150"></canvas>
+<p id="beamInfo"></p>
+</div>
+
+</div>
+
+<script>
+// Bahasa
+const langContent={
+id:{
+'theory-title':'Teori FBD & Balok',
+'theory-content':'Klik pada benda untuk menambahkan gaya. Drag untuk ubah arah/magnitude. Klik kanan untuk hapus. Klik balok untuk menambah/menggeser beban titik. Diagram shear & moment update otomatis.',
+'practice-title':'FBD & Balok Interaktif',
+'result-prefix':'Gaya resultan = ',
+'beam-info':'Klik balok untuk menambah/geser beban titik (N).'
+},
+zh:{
+'theory-title':'自由體圖與樑理論',
+'theory-content':'點擊物體以添加力。拖動以改變方向/大小，右鍵刪除。點擊樑以添加/拖動集中荷載，剪力圖與彎矩圖自動更新。',
+'practice-title':'互動FBD與樑',
+'result-prefix':'合力 = ',
+'beam-info':'點擊樑以添加/拖動集中荷載(N)。'
+}
+};
+function setLanguage(lang){
+for(const id in langContent[lang]){
+document.getElementById(id).innerText=langContent[lang][id];
+}
+}
+
+// ----- FBD Interaktif -----
+const fbdCanvas=document.getElementById('fbdCanvas');
+const fbdCtx=fbdCanvas.getContext('2d');
+let forces=[], dragging=null;
+const objectPos={x:200,y:150,radius:20};
+
+function drawFBD(){
+fbdCtx.clearRect(0,0,fbdCanvas.width,fbdCanvas.height);
+fbdCtx.fillStyle='#3498db';
+fbdCtx.beginPath();
+fbdCtx.arc(objectPos.x,objectPos.y,objectPos.radius,0,2*Math.PI);
+fbdCtx.fill();
+
+// Gaya
+forces.forEach(f=>{
+fbdCtx.beginPath();
+fbdCtx.moveTo(objectPos.x,objectPos.y);
+fbdCtx.lineTo(objectPos.x+f.x,objectPos.y+f.y);
+fbdCtx.strokeStyle='red';
+fbdCtx.lineWidth=3;
+fbdCtx.stroke();
+fbdCtx.fillText('F',objectPos.x+f.x+5, objectPos.y+f.y+5);
+});
+calculateResultant();
+}
+
+function calculateResultant(){
+let rx=0,ry=0;
+forces.forEach(f=>{rx+=f.x; ry+=f.y;});
+const result=Math.sqrt(rx*rx+ry*ry);
+const lang=document.getElementById('theory-title').innerText.includes('FBD')?'id':'zh';
+document.getElementById('result').innerText=langContent[lang]['result-prefix']+result.toFixed(2)+' N';
+}
+
+// Klik kiri tambah gaya
+fbdCanvas.addEventListener('click',e=>{
+const rect=fbdCanvas.getBoundingClientRect();
+const mx=e.clientX-rect.left;
+const my=e.clientY-rect.top;
+forces.push({x:mx-objectPos.x,y:my-objectPos.y});
+drawFBD();
+});
+
+// Klik kanan hapus gaya
+fbdCanvas.addEventListener('contextmenu', e=>{
+e.preventDefault();
+const rect=fbdCanvas.getBoundingClientRect();
+const mx=e.clientX-rect.left;
+const my=e.clientY-rect.top;
+forces=forces.filter(f=>Math.hypot(mx-(objectPos.x+f.x),my-(objectPos.y+f.y))>10);
+drawFBD();
+});
+
+// Drag gaya
+fbdCanvas.addEventListener('mousedown', e=>{
+const rect=fbdCanvas.getBoundingClientRect();
+const mx=e.clientX-rect.left;
+const my=e.clientY-rect.top;
+forces.forEach((f,i)=>{
+const fx=objectPos.x+f.x;
+const fy=objectPos.y+f.y;
+if(Math.hypot(mx-fx,my-fy)<10) dragging=i;
+});
+});
+fbdCanvas.addEventListener('mousemove', e=>{
+if(dragging!==null){
+const rect=fbdCanvas.getBoundingClientRect();
+const mx=e.clientX-rect.left;
+const my=e.clientY-rect.top;
+forces[dragging].x=mx-objectPos.x;
+forces[dragging].y=my-objectPos.y;
+drawFBD();
+}
+});
+fbdCanvas.addEventListener('mouseup', e=>{dragging=null;});
+
+drawFBD();
+
+// ----- Beam Interaktif -----
+const beamCanvas=document.getElementById('beamCanvas');
+const beamCtx=beamCanvas.getContext('2d');
+let beamLoads=[];
+const beamHeight=50;
+
+function drawBeam(){
+beamCtx.clearRect(0,0,beamCanvas.width,beamCanvas.height);
+beamCtx.fillStyle='#95a5a6';
+beamCtx.fillRect(0,beamHeight,beamCanvas.width,20);
+
+// Shear diagram
+beamCtx.strokeStyle='red';
+beamCtx.beginPath();
+beamCtx.moveTo(0,beamHeight-40);
+let V=0;
+beamLoads.forEach(l=>{
+V-=l.P;
+beamCtx.lineTo(l.x,beamHeight-40+V/4);
+});
+beamCtx.lineTo(beamCanvas.width,beamHeight-40+V/4);
+beamCtx.stroke();
+beamCtx.fillText('V',5,beamHeight-45);
+
+// Moment diagram
+beamCtx.strokeStyle='blue';
+beamCtx.beginPath();
+beamCtx.moveTo(0,beamHeight+100);
+let M=0;
+beamLoads.forEach(l=>{
+M+=l.P*(beamCanvas.width-l.x)/beamCanvas.width;
+beamCtx.lineTo(l.x,beamHeight+100-M/4);
+});
+beamCtx.lineTo(beamCanvas.width,beamHeight+100-M/4);
+beamCtx.stroke();
+beamCtx.fillText('M',5,beamHeight+95);
+
+// Beban titik
+beamCtx.fillStyle='orange';
+beamLoads.forEach(l=>{
+beamCtx.beginPath();
+beamCtx.arc(l.x,beamHeight,l.P/5,0,2*Math.PI);
+beamCtx.fill();
+});
+}
+
+// Klik tambah/drag beban
+let dragLoad=null;
+beamCanvas.addEventListener('mousedown', e=>{
+const rect=beamCanvas.getBoundingClientRect();
+const mx=e.clientX-rect.left;
+const my=e.clientY-rect.top;
+beamLoads.forEach((l,i)=>{
+if(Math.hypot(mx-l.x,my-beamHeight)<10) dragLoad=i;
+});
+if(dragLoad===null){ // tambah beban baru
+beamLoads.push({x:mx,P:100});
+drawBeam();
+}
+});
+beamCanvas.addEventListener('mousemove', e=>{
+if(dragLoad!==null){
+const rect=beamCanvas.getBoundingClientRect();
+beamLoads[dragLoad].x=e.clientX-rect.left;
+drawBeam();
+}
+});
+beamCanvas.addEventListener('mouseup', e=>{dragLoad=null;});
+
+drawBeam();
+</script>
+</body>
+</html>
