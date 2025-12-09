@@ -1,293 +1,494 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="zh-Hant-TW">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Kalkulator Persamaan Keseimbangan</title>
+<title>平衡方程式計算器 - 自動角度選擇</title>
 <style>
-  :root{--bg:#f4f7ff;--card:#ffffff;--muted:#6b7280;--accent:#3b82f6}
-  body{font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,var(--bg),#ffffff);margin:0;padding:24px;}
-  .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 20px rgba(60,64,75,.08);max-width:1100px;margin:18px auto}
-  h1{margin:0 0 8px;font-size:20px}
-  p.lead{margin:0 0 16px;color:var(--muted)}
-  .grid{display:grid;grid-template-columns:360px 1fr;gap:18px}
-  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-  input[type=number],select{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px}
-  button{background:var(--accent);color:white;padding:10px 12px;border:0;border-radius:8px;cursor:pointer}
-  .row{display:flex;gap:8px;margin-bottom:8px}
-  .forces-list{max-height:260px;overflow:auto;padding:6px;border-radius:8px;border:1px dashed #e6e9ef}
-  .force-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;background:linear-gradient(180deg,#fff,#fbfdff);margin-bottom:8px}
-  .small{font-size:13px;color:var(--muted)}
-  .result{padding:12px;border-radius:8px;background:#fbfdff;margin-top:12px}
-  .canvas-wrap{background:#f8fbff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:12px}
-  svg{width:100%;height:420px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#f6f9ff);}
-  .btn-ghost{background:transparent;border:1px solid #e6e9ef;color:#374151;padding:8px 10px;border-radius:8px;cursor:pointer}
-  .muted{color:var(--muted)}
+  :root {
+    --bg: #f4f7ff;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --accent: #3b82f6;
+    --beam: #3a3a3a;
+    --arrow: #2a7a2a;
+    --helper-line: #bbb;
+    --text-dark: #222;
+    --text-muted: #555;
+  }
+  body {
+    font-family: Inter, 微軟正黑體, Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg), #ffffff);
+    margin: 0;
+    padding: 24px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 6px 20px rgba(60,64,75,.08);
+    max-width: 1300px;
+    margin: 18px auto;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+  }
+  p.lead {
+    margin: 0 0 20px;
+    color: var(--muted);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 18px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  input[type=number], select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #e6e9ef;
+    font-size: 14px;
+  }
+  button {
+    background: var(--accent);
+    color: white;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+  }
+  button[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: #333;
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    top: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid #e6e9ef;
+    color: #374151;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .forces-list {
+    max-height: 260px;
+    overflow: auto;
+    padding: 6px;
+    border-radius: 8px;
+    border: 1px dashed #e6e9ef;
+  }
+  .force-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #fff, #fbfdff);
+    margin-bottom: 8px;
+  }
+  .small {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .canvas-wrap {
+    background: #f8fbff;
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+  }
+  svg {
+    width: 100%;
+    height: 750px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #ffffff, #f6f9ff);
+  }
+  .totals-overlay {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: rgba(255 255 255 / 0.9);
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    color: var(--text-dark);
+    user-select: none;
+    font-weight: 600;
+    box-shadow: 2px 4px 8px rgba(0,0,0,0.1);
+    line-height: 1.4;
+    width: max-content;
+  }
+  .equilibrium-balanced {
+    color: green;
+    font-weight: 700;
+  }
+  .equilibrium-unbalanced {
+    color: red;
+    font-weight: 700;
+  }
+  /* 坐標軸樣式 */
+  .axis {
+    stroke: #666;
+    stroke-width: 1.5;
+  }
+  .tick {
+    stroke: #666;
+    stroke-width: 1;
+  }
+  .label {
+    fill: #444;
+    font-size: 13px;
+    user-select: none;
+  }
+  @media (max-width: 768px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    .row {
+      flex-direction: column;
+    }
+    input[type=number], select, button {
+      font-size: 20px;
+      padding: 0;
+    }
+    svg {
+      height: 500px;
+    }
+    .card {
+      padding: 12px;
+      margin: 12px;
+    }
+    .force-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+  }
 </style>
 </head>
-
 <body>
 <div class="card">
-  <h1>Kalkulator Persamaan Keseimbangan</h1>
-  <p class="lead">Masukkan gaya (besar, sudut, lengan momen).</p>
-
+  <h1>平衡方程式計算器</h1>
+  <p class="lead">輸入力的大小、方向（角度自動）和力臂長度。</p>
   <div class="grid">
-
-    <!-- LEFT PANEL -->
     <div>
-      <label>Tambah Gaya</label>
+      <label>新增力</label>
       <div class="row">
-        <input id="mag" type="number" placeholder="Besar gaya (N)" value="100">
-        <input id="angle" type="number" placeholder="Sudut (°)" value="-90">
-        <input id="arm" type="number" placeholder="Lengan momen (m)" value="0.5">
+        <input id="mag" type="number" placeholder="力的大小（牛頓）" />
+        <input id="arm" type="number" placeholder="力臂長度（公尺）" />
       </div>
-
       <div class="row">
-        <select id="dir">
-          <option value="point">Titik pada balok</option>
-          <option value="left">Arah kiri</option>
-          <option value="right">Arah kanan</option>
+        <select id="dir" title="選擇力的方向">
+          <option value="right" selected>向右 (0°)</option>
+          <option value="left">向左 (180°)</option>
+          <option value="down">向下 (-90°)</option>
+          <option value="up">向上 (90°)</option>
         </select>
-        <button id="addBtn">Tambah</button>
-        <button id="clearBtn" class="btn-ghost">Hapus Semua</button>
+        <button id="addBtn" aria-label="新增力" title="將力新增到列表">新增</button>
+        <button id="clearBtn" class="btn-ghost" aria-label="清除所有力" title="清除所有力">清除全部</button>
       </div>
-
-      <label>Daftar Gaya</label>
-      <div class="forces-list" id="forcesList"></div>
-
-      <div class="result">
-        <div><strong>∑Fx</strong> = <span id="sumFx">0.000</span> N</div>
-        <div><strong>∑Fy</strong> = <span id="sumFy">0.000</span> N</div>
-        <div><strong>∑M</strong> = <span id="sumM">0.000</span> Nm</div>
-        <div class="small">Status: <span id="status">-</span></div>
-      </div>
+      <label>力清單</label>
+      <div class="forces-list" id="forcesList" aria-live="polite"></div>
     </div>
-
-    <!-- RIGHT PANEL (SVG) -->
     <div class="canvas-wrap">
-      <svg id="svg" viewBox="0 0 1200 500">
-
-        <g id="beamGroup">
-          <rect x="100" y="220" width="1000" height="20" rx="8" fill="#111827" fill-opacity="0.06"></rect>
-          <line x1="100" y1="250" x2="1100" y2="250" stroke="#111827" stroke-opacity="0.06"></line>
-          <polygon points="120,260 150,260 135,300" fill="#111827" fill-opacity="0.08"></polygon>
-          <polygon points="1060,260 1090,260 1075,300" fill="#111827" fill-opacity="0.08"></polygon>
-        </g>
-
-        <g id="forcesGroup"></g>
-
-        <circle cx="600" cy="260" r="4" fill="#374151"></circle>
-        <text x="600" y="280" text-anchor="middle" font-size="12" fill="#374151">Titik Referensi</text>
-
+      <svg id="svg" viewBox="0 0 1000 700" aria-label="力和力臂圖示" role="img" tabindex="0" aria-live="polite" aria-atomic="true">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.3"/>
+          </filter>
+          <marker id="arrowGreen" markerWidth="12" markerHeight="9" refX="12" refY="4.5" orient="auto">
+            <path d="M0,0 L12,4.5 L0,9 Z" fill="#2a7a2a"/>
+          </marker>
+        </defs>
+        <line x1="100" y1="350" x2="900" y2="350" class="axis" />
+        <line x1="500" y1="180" x2="500" y2="520" class="axis" />
+        <g id="xTicks" aria-hidden="true"></g>
+        <rect id="beam" x="100" y="320" width="800" height="22" rx="10" fill="#3a3a3a" filter="url(#shadow)"></rect>
+        <g id="forcesGroup" aria-hidden="true"></g>
       </svg>
-
-      <div class="small muted">Tambahkan gaya dengan sudut -90° untuk gaya vertikal ke bawah.</div>
+      <div class="totals-overlay" aria-live="polite" aria-atomic="true" id="totalsOverlay">
+        <div>∑Fx = 0.000 N</div>
+        <div>∑Fy = 0.000 N</div>
+        <div>∑M = 0.000 Nm</div>
+        <div>狀態: -</div>
+      </div>
     </div>
-
   </div>
 </div>
-
 <script>
 let forces = [];
-const svg = document.getElementById('svg');
+const mag = document.getElementById('mag');
+const arm = document.getElementById('arm');
+const dir = document.getElementById('dir');
 const forcesGroup = document.getElementById('forcesGroup');
 const forcesList = document.getElementById('forcesList');
-const sumFxEl = document.getElementById('sumFx');
-const sumFyEl = document.getElementById('sumFy');
-const sumMEl = document.getElementById('sumM');
-const statusEl = document.getElementById('status');
+const totalsOverlay = document.getElementById('totalsOverlay');
+const xTicksGroup = document.getElementById('xTicks');
 
-function addForce(mag, angleDeg, arm){
-  const angle = angleDeg * Math.PI/180;
-  const id = Date.now().toString(36);
-  forces.push({id, mag:+mag, angleDeg:+angleDeg, angle, arm:+arm});
-  renderList(); renderSVG(); compute();
+const angleValues = {
+  right: 0,
+  left: 180,
+  down: -90,
+  up: 90,
+};
+
+function drawTicks() {
+  xTicksGroup.innerHTML = '';
+  const refX = 500;
+  const yAxis = 350;
+  const scale = 200;
+  for (let i = -2; i <= 2; i += 0.25) {
+    const x = refX + i * scale;
+    const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    tick.setAttribute("x1", x);
+    tick.setAttribute("y1", yAxis - 6);
+    tick.setAttribute("x2", x);
+    tick.setAttribute("y2", yAxis + 6);
+    tick.setAttribute("class", "tick");
+    xTicksGroup.appendChild(tick);
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("x", x);
+    label.setAttribute("y", yAxis + 22);
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("class", "label");
+    label.textContent = i.toFixed(2) + " m";
+    xTicksGroup.appendChild(label);
+  }
 }
 
-function renderList(){
-  forcesList.innerHTML = "";
+function renderSVG() {
+  forcesGroup.innerHTML = '';
+  const refX = 500, refY = 330, scale = 200;
 
-  forces.forEach(f=>{
-    const div = document.createElement("div");
-    div.className = "force-item";
-
-    div.innerHTML = `
-      <div>
-        <div><strong>${f.mag} N</strong> <span class="small">@ ${f.angleDeg}°</span></div>
-        <div class="small">arm ${f.arm} m</div>
-      </div>
-
-      <div style="display:flex;gap:6px;">
-        <button class="btn-ghost edit-btn" data-id="${f.id}">Edit</button>
-        <button class="btn-ghost delete-btn" data-id="${f.id}">Hapus</button>
-      </div>
-    `;
-
-    forcesList.appendChild(div);
-  });
-
-  // --- Event listener tombol EDIT ---
-  document.querySelectorAll('.edit-btn').forEach(btn=>{
-    btn.onclick = e => {
-      const id = e.target.dataset.id;
-      editForce(id);
-    };
-  });
-
-  // --- Event listener tombol HAPUS ---
-  document.querySelectorAll('.delete-btn').forEach(btn=>{
-    btn.onclick = e => {
-      const id = e.target.dataset.id;
-      removeForce(id);
-    };
-  });
-}
-
-    function renderList(){  
-  forcesList.innerHTML='';  
-
-  forces.forEach(f=>{  
-    const div = document.createElement('div');  
-    div.className='force-item';  
-    div.innerHTML = `
-      <div class="info">
-        <div><strong>${f.mag.toFixed(2)} N</strong> <span class="small">@ ${f.angleDeg}°</span></div>
-        <div class="small">arm ${f.arm} m</div>
-      </div>
-
-      <div class="actions" style="display:flex; gap:6px">
-        <button class="btn-ghost edit" data-id="${f.id}">Edit</button>
-        <button class="btn-ghost del" data-id="${f.id}">Hapus</button>
-      </div>
-    `;
-
-    forcesList.appendChild(div);
-  });
-
-  // Tombol hapus
-  Array.from(document.querySelectorAll('.del')).forEach(b => {
-    b.onclick = e => removeForce(e.target.dataset.id);
-  });
-
-  // Tombol edit (inline)
-  Array.from(document.querySelectorAll('.edit')).forEach(b => {
-    b.onclick = e => startEdit(e.target.dataset.id, e.target.closest('.force-item'));
-  });
-}
-
-    function startEdit(id, container){
-  const f = forces.find(x => x.id === id);
-  if(!f) return;
-
-  container.innerHTML = `
-    <div style="flex:1">
-      <input id="editMag" type="number" value="${f.mag}" style="width:80px;margin-right:4px">
-      <input id="editAng" type="number" value="${f.angleDeg}" style="width:80px;margin-right:4px">
-      <input id="editArm" type="number" value="${f.arm}" style="width:80px">
-    </div>
-
-    <div style="display:flex; gap:6px">
-      <button class="btn-ghost save">Simpan</button>
-      <button class="btn-ghost cancel">Batal</button>
-    </div>
-  `;
-
-  // SIMPAN perubahan
-  container.querySelector('.save').onclick = () => {
-    f.mag = parseFloat(container.querySelector('#editMag').value);
-    f.angleDeg = parseFloat(container.querySelector('#editAng').value);
-    f.angle = f.angleDeg * Math.PI/180;
-    f.arm = parseFloat(container.querySelector('#editArm').value);
-
-    renderList();
-    renderSVG();
-    compute();
-  };
-
-  // BATAL (kembali seperti semula)
-  container.querySelector('.cancel').onclick = () => renderList();
-}
-    
-function removeForce(id){
-  forces = forces.filter(x => x.id !== id);
-  renderList(); renderSVG(); compute();
-}
-
-function clearAll(){
-  forces = [];
-  renderList(); renderSVG(); compute();
-}
-
-function compute(){
-  let Fx=0, Fy=0, M=0;
-
-  forces.forEach(f=>{
-    const fx = f.mag * Math.cos(f.angle);
-    const fy = f.mag * Math.sin(f.angle);
-
-    Fx += fx;
-    Fy += fy;
-
-    M += (-fy) * f.arm;
-  });
-
-  sumFxEl.textContent = Fx.toFixed(3);
-  sumFyEl.textContent = Fy.toFixed(3);
-  sumMEl.textContent = M.toFixed(3);
-
-  if(Math.abs(Fx)<0.01 && Math.abs(Fy)<0.01 && Math.abs(M)<0.01)
-    statusEl.textContent = "SEIMBANG";
-  else
-    statusEl.textContent = "TIDAK SEIMBANG";
-}
-
-function renderSVG(){
-  forcesGroup.innerHTML = "";
-  const refX=600, refY=260, scale=200;
-
-  forces.forEach(f=>{
-    const px = refX + f.arm*scale;
+  forces.forEach(f => {
+    const px = refX + f.arm * scale;
     const py = refY;
 
-    const ux = Math.cos(f.angle);
-    const uy = Math.sin(f.angle);
+    const helperLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    helperLine.setAttribute("x1", px);
+    helperLine.setAttribute("y1", py - 20);
+    helperLine.setAttribute("x2", px);
+    helperLine.setAttribute("y2", py + 40);
+    helperLine.setAttribute("stroke", "#bbb");
+    helperLine.setAttribute("stroke-dasharray", "5 5");
+    helperLine.setAttribute("stroke-width", "1");
+    forcesGroup.appendChild(helperLine);
 
-    const len = Math.min(140, Math.max(30, Math.abs(f.mag)*0.8));
-    const x2 = px + ux*len;
-    const y2 = py + uy*len;
+    const angleRad = f.angle;
+    const magScale = Math.min(140, Math.max(40, Math.abs(f.mag) * 1.3));
+    const ux = Math.cos(angleRad);
+    const uy = Math.sin(angleRad);
 
-    const g = document.createElementNS("http://www.w3.org/2000/svg","g");
-    g.innerHTML = `
-      <line x1="${px}" y1="${py}" x2="${x2}" y2="${y2}" stroke="#ef4444" stroke-width="4"/>
-      <polygon points="${x2},${y2} ${x2-8*ux-6*uy},${y2-8*uy+6*ux} ${x2-8*ux+6*uy},${y2-8*uy-6*ux}" fill="#ef4444"></polygon>
-      <circle cx="${px}" cy="${py}" r="4" fill="#111827"></circle>
-      <text x="${px+12}" y="${py-12}" font-size="12">${f.mag} N @ ${f.angleDeg}°</text>
-      <text x="${px+12}" y="${py+6}" font-size="11" fill="#6b7280">arm ${f.arm} m</text>
-    `;
+    const x2 = px + ux * magScale;
+    const y2 = py + uy * magScale;
 
-    g.addEventListener("click",()=>{
-      if(confirm("Hapus gaya ini?")) removeForce(f.id);
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.style.cursor = "pointer";
+    g.title = "點擊以刪除此力";
+    g.addEventListener("click", () => {
+      if (confirm("是否刪除此力？")) removeForce(f.id);
     });
+
+    const strokeColor = f.mag >= 0 ? "#2a7a2a" : "#a82a2a";
+    const fillColor = f.mag >= 0 ? "#2a7a2a" : "#a82a2a";
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", px);
+    line.setAttribute("y1", py);
+    line.setAttribute("x2", x2);
+    line.setAttribute("y2", y2);
+    line.setAttribute("stroke", strokeColor);
+    line.setAttribute("stroke-width", 6);
+    line.setAttribute("stroke-linecap", "round");
+    line.setAttribute("marker-end", "url(#arrowGreen)");
+    g.appendChild(line);
+
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", px);
+    circle.setAttribute("cy", py);
+    circle.setAttribute("r", 8);
+    circle.setAttribute("fill", "#fff");
+    circle.setAttribute("stroke", fillColor);
+    circle.setAttribute("stroke-width", 2);
+    g.appendChild(circle);
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("x", x2 + (ux > 0 ? 12 : -48));
+    label.setAttribute("y", y2 + 6);
+    label.setAttribute("font-size", "15");
+    label.setAttribute("fill", fillColor);
+    label.setAttribute("font-weight", "600");
+    label.style.userSelect = "none";
+    label.textContent = `${f.mag.toFixed(2)} N`;
+    g.appendChild(label);
+
+    const armLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    armLabel.setAttribute("x", px + 16);
+    armLabel.setAttribute("y", py + 50);
+    armLabel.setAttribute("font-size", "14");
+    armLabel.setAttribute("fill", "#555");
+    armLabel.textContent = `力臂 ${f.arm} m`;
+    g.appendChild(armLabel);
 
     forcesGroup.appendChild(g);
   });
 }
 
-document.getElementById("addBtn").onclick = ()=>{
-  addForce(
-    parseFloat(mag.value)||0,
-    parseFloat(angle.value)||0,
-    parseFloat(arm.value)||0
-  );
+function addForce(magVal, directionKey, armVal) {
+  const angleDegVal = angleValues[directionKey];
+  const angleRad = angleDegVal * Math.PI / 180;
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+  forces.push({id, mag: +magVal, angleDeg: angleDegVal, angle: angleRad, arm: +armVal});
+  renderList(); renderSVG(); compute();
 }
 
-document.getElementById("clearBtn").onclick = ()=>{
-  if(confirm("Hapus semua gaya?")) clearAll();
+function renderList() {
+  forcesList.innerHTML = '';
+  forces.forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'force-item';
+    div.innerHTML = `
+      <div class="info">
+        <div><strong>${f.mag.toFixed(2)} N</strong> <span class="small">@ ${f.angleDeg}°</span></div>
+        <div class="small">力臂 ${f.arm} m</div>
+      </div>
+      <div class="actions" style="display:flex; gap:6px">
+        <button class="btn-ghost edit" data-id="${f.id}" aria-label="編輯力" title="編輯力">編輯</button>
+        <button class="btn-ghost del" data-id="${f.id}" aria-label="刪除力" title="刪除力">刪除</button>
+      </div>
+    `;
+    forcesList.appendChild(div);
+  });
+
+  Array.from(document.querySelectorAll('.del')).forEach(b => {
+    b.onclick = e => removeForce(e.target.dataset.id);
+  });
+
+  Array.from(document.querySelectorAll('.edit')).forEach(b => {
+    b.onclick = e => startEdit(e.target.dataset.id, e.target.closest('.force-item'));
+  });
 }
 
-addForce(200,-90,-1.2);
-addForce(200,-90,0.8);
-addForce(50,0,0);
+function startEdit(id, container) {
+  const f = forces.find(x => x.id === id);
+  if (!f) return;
+  container.innerHTML = `
+    <div style="flex:1; display:flex; gap:6px;">
+      <input id="editMag" type="number" value="${f.mag}" style="width:80px;" aria-label="編輯力的大小" />
+      <select id="editDir" style="width:100px;" aria-label="編輯力的方向">
+        <option value="right" ${f.angleDeg === 0 ? 'selected' : ''}>向右 (0°)</option>
+        <option value="left" ${f.angleDeg === 180 ? 'selected' : ''}>向左 (180°)</option>
+        <option value="down" ${f.angleDeg === -90 ? 'selected' : ''}>向下 (-90°)</option>
+        <option value="up" ${f.angleDeg === 90 ? 'selected' : ''}>向上 (90°)</option>
+      </select>
+      <input id="editArm" type="number" value="${f.arm}" style="width:80px;" aria-label="編輯力臂長度" />
+    </div>
+    <div style="display:flex; gap:6px;">
+      <button class="btn-ghost save" aria-label="儲存編輯" title="儲存編輯">儲存</button>
+      <button class="btn-ghost cancel" aria-label="取消編輯" title="取消編輯">取消</button>
+    </div>
+  `;
+
+  container.querySelector('.save').onclick = () => {
+    f.mag = parseFloat(container.querySelector('#editMag').value);
+    const newDir = container.querySelector('#editDir').value;
+    f.angleDeg = angleValues[newDir];
+    f.angle = f.angleDeg * Math.PI / 180;
+    f.arm = parseFloat(container.querySelector('#editArm').value);
+    renderList(); renderSVG(); compute();
+  };
+  container.querySelector('.cancel').onclick = () => renderList();
+}
+
+function removeForce(id) {
+  forces = forces.filter(x => x.id !== id);
+  renderList(); renderSVG(); compute();
+}
+
+function clearAll() {
+  forces = [];
+  renderList(); renderSVG(); compute();
+}
+
+function compute() {
+  let Fx = 0, Fy = 0, M = 0;
+  forces.forEach(f => {
+    const fx = f.mag * Math.cos(f.angle);
+    const fy = f.mag * Math.sin(f.angle);
+    Fx += fx;
+    Fy += fy;
+    M += (-fy) * f.arm;
+  });
+
+  const tolerance = 0.001;
+  const isEquilibrium = Math.abs(Fx) < tolerance && Math.abs(Fy) < tolerance && Math.abs(M) < tolerance;
+
+  let statusText = isEquilibrium ? "平衡" : "不平衡";
+  let statusClass = isEquilibrium ? "equilibrium-balanced" : "equilibrium-unbalanced";
+
+  totalsOverlay.innerHTML = `
+    <div>∑Fx = ${Fx.toFixed(3)} N</div>
+    <div>∑Fy = ${Fy.toFixed(3)} N</div>
+    <div>∑M = ${M.toFixed(3)} Nm</div>
+    <div class="${statusClass}">狀態: ${statusText}</div>
+  `;
+}
+
+document.getElementById('addBtn').onclick = () => {
+  const m = parseFloat(mag.value);
+  const ar = parseFloat(arm.value);
+  const directionKey = dir.value;
+  if (isNaN(m) || isNaN(ar)) {
+    alert('請正確填寫所有數值。');
+    return;
+  }
+  if (ar < -2 || ar > 2) {
+    alert('力臂長度必須介於 -2 公尺至 2 公尺之間。');
+    return;
+  }
+  addForce(m, directionKey, ar);
+  mag.value = '';
+  arm.value = '';
+  mag.focus();
+};
+
+document.getElementById('clearBtn').onclick = () => {
+  if (confirm('確定清除所有力？')) clearAll();
+};
+
+drawTicks();
+renderList();
+renderSVG();
+compute();
 </script>
 </body>
 </html>
